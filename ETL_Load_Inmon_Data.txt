@@ -1,0 +1,304 @@
+CREATE PROCEDURE [dbo].[ETL_Load_Inmon_Data]
+
+AS
+	DECLARE
+	@autoNum int,
+	@salesYR int,
+	@salesMONum int,
+	@salesMO varchar(10),
+	@salesWK smallInt,
+	@catName varchar(25),
+	@deptName varchar(25),
+	@gender varchar(1),
+	@genderName varchar(15),
+	@city varchar(25),
+	@state varchar(2),
+	@stateName varchar(15),
+	@sumSales decimal(10,2);
+
+	SET @autoNum = 0;
+
+	DECLARE getYearlySales CURSOR
+	FOR SELECT year(o.orderDt), ct.catName, d.deptName, c.gender,
+			   s.city, s.state, sum(oi.qty*oi.price) as 'sales'
+		FROM customer c, orders o, orderItems oi, shippingAddress s, product p, department d, category ct
+		WHERE c.custID = o.custID and o.OID = oi.OID and c.custID = s.custID 
+			  and p.prodID = oi.prodID and p.catID = ct.catID and ct.deptID = d.deptID and s.primaryYN=1
+		GROUP BY year(o.orderDt), ct.catName, d.deptName, c.gender, s.city, s.state;
+
+		OPEN getYearlySales;
+
+		FETCH NEXT FROM getYearlySales into
+			@salesYR, @catName, @deptName, @gender,
+			@city, @state, @sumSales;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+				SET @autoNum = @autoNum + 1;
+
+				IF @gender = 'M'
+					BEGIN SET @genderName = 'Male' End
+				ELSE IF @gender = 'F'
+					BEGIN SET @genderName = 'Female' End
+				ELSE
+					BEGIN SET @genderName = 'Other' End
+
+				SET @stateName =
+					CASE
+						WHEN @state = 'AL' THEN 'Alabama'
+						WHEN @state = 'AK' THEN 'Alaska'
+						WHEN @state = 'AZ' THEN 'Arizona'
+						WHEN @state = 'AR' THEN 'Arkansas'
+						WHEN @state = 'CA' THEN 'California'
+						WHEN @state = 'CO' THEN 'Colorado'
+						WHEN @state = 'CT' THEN 'Connecticut'
+						WHEN @state = 'DE' THEN 'Delaware'
+						WHEN @state = 'FL' THEN 'Florida'
+						WHEN @state = 'GA' THEN 'Georgia'
+						WHEN @state = 'HI' THEN 'Hawaii'
+						WHEN @state = 'ID' THEN 'Idaho'
+						WHEN @state = 'IL' THEN 'Illinois'
+						WHEN @state = 'IN' THEN 'Indiana'
+						WHEN @state = 'IA' THEN 'Iowa'
+						WHEN @state = 'KS' THEN 'Kansas'
+						WHEN @state = 'KY' THEN 'Kentucky'
+						WHEN @state = 'LA' THEN 'Louisiana'
+						WHEN @state = 'ME' THEN 'Maine'
+						WHEN @state = 'MD' THEN 'Maryland'
+						WHEN @state = 'MA' THEN 'Massachusetts'
+						WHEN @state = 'MI' THEN 'Michigan'
+						WHEN @state = 'MN' THEN 'Minnesota'
+						WHEN @state = 'MS' THEN 'Mississippi'
+						WHEN @state = 'MO' THEN 'Missouri'
+						WHEN @state = 'MT' THEN 'Montana'
+						WHEN @state = 'NE' THEN 'Nebraska'
+						WHEN @state = 'NV' THEN 'Nevada'
+						WHEN @state = 'NH' THEN 'New Hampshire'
+						WHEN @state = 'NJ' THEN 'New Jersey'
+						WHEN @state = 'NM' THEN 'New Mexico'
+						WHEN @state = 'NY' THEN 'New York'
+						WHEN @state = 'NC' THEN 'North Carolina'
+						WHEN @state = 'ND' THEN 'North Dakota'
+						WHEN @state = 'OH' THEN 'Ohio'
+						WHEN @state = 'OK' THEN 'Oklahoma'
+						WHEN @state = 'OR' THEN 'Oregon'
+						WHEN @state = 'PA' THEN 'Pennsylvania'
+						WHEN @state = 'RI' THEN 'Rhode Island'
+						WHEN @state = 'SC' THEN 'South Carolina'
+						WHEN @state = 'SD' THEN 'South Dakota'
+						WHEN @state = 'TN' THEN 'Tennessee'
+						WHEN @state = 'TX' THEN 'Texas'
+						WHEN @state = 'UT' THEN 'Utah'
+						WHEN @state = 'VT' THEN 'Vermont'
+						WHEN @state = 'VA' THEN 'Virginia'
+						WHEN @state = 'WA' THEN 'Washington'
+						WHEN @state = 'WV' THEN 'West Virginia'
+						WHEN @state = 'WI' THEN 'Wisconsin'
+						WHEN @state = 'WY' THEN 'Wyoming'
+						ELSE 'NA'
+					END;
+
+				INSERT INTO salesByYear VALUES (@autoNum, @salesYR, @catName, @deptName,
+					@genderName, @city, @stateName, @sumSales);
+				
+				FETCH NEXT FROM getYearlySales INTO
+					@salesYR, @catName, @deptName, @gender,
+					@city, @state, @sumSales;
+			END
+
+		CLOSE getYearlySales;
+
+		DEALLOCATE getYearlySales;
+
+/* Load Sales by Month data*/
+	SET @autoNum = 0;
+
+	DECLARE getMonthlySales CURSOR
+	FOR SELECT FORMAT(o.orderDT, 'MMMM'), Month(o.orderDt), year(o.orderDt), ct.catName, d.deptName,
+				c.gender, s.city, s.state, sum(oi.qty*oi.price) as 'sales'
+	FROM customer c, orders o, orderItems oi, shippingAddress s, product p, department d, category ct
+	WHERE c.custID = o.custID and o.OID = oi.OID and c.custID = s.custID 
+		and p.prodID = oi.prodID and p.catID = ct.catID and ct.deptID = d.deptID and s.primaryYN=1
+	GROUP BY FORMAT(o.orderDT, 'MMMM'), Month(o.orderDt), year(o.orderDt), 
+				ct.catName, d.deptName, c.gender, s.city, s.state;
+
+		OPEN getMonthlySales;
+
+		FETCH NEXT FROM getMonthlySales into
+			@salesMO, @salesMONum, @salesYR, @catName, @deptName, @gender,
+			@city, @state, @sumSales;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+				SET @autoNum = @autoNum + 1;
+
+				IF @gender = 'M'
+					BEGIN SET @genderName = 'Male' End
+				ELSE IF @gender = 'F'
+					BEGIN SET @genderName = 'Female' End
+				ELSE
+					BEGIN SET @genderName = 'Other' End
+
+				SET @stateName =
+					CASE
+						WHEN @state = 'AL' THEN 'Alabama'
+						WHEN @state = 'AK' THEN 'Alaska'
+						WHEN @state = 'AZ' THEN 'Arizona'
+						WHEN @state = 'AR' THEN 'Arkansas'
+						WHEN @state = 'CA' THEN 'California'
+						WHEN @state = 'CO' THEN 'Colorado'
+						WHEN @state = 'CT' THEN 'Connecticut'
+						WHEN @state = 'DE' THEN 'Delaware'
+						WHEN @state = 'FL' THEN 'Florida'
+						WHEN @state = 'GA' THEN 'Georgia'
+						WHEN @state = 'HI' THEN 'Hawaii'
+						WHEN @state = 'ID' THEN 'Idaho'
+						WHEN @state = 'IL' THEN 'Illinois'
+						WHEN @state = 'IN' THEN 'Indiana'
+						WHEN @state = 'IA' THEN 'Iowa'
+						WHEN @state = 'KS' THEN 'Kansas'
+						WHEN @state = 'KY' THEN 'Kentucky'
+						WHEN @state = 'LA' THEN 'Louisiana'
+						WHEN @state = 'ME' THEN 'Maine'
+						WHEN @state = 'MD' THEN 'Maryland'
+						WHEN @state = 'MA' THEN 'Massachusetts'
+						WHEN @state = 'MI' THEN 'Michigan'
+						WHEN @state = 'MN' THEN 'Minnesota'
+						WHEN @state = 'MS' THEN 'Mississippi'
+						WHEN @state = 'MO' THEN 'Missouri'
+						WHEN @state = 'MT' THEN 'Montana'
+						WHEN @state = 'NE' THEN 'Nebraska'
+						WHEN @state = 'NV' THEN 'Nevada'
+						WHEN @state = 'NH' THEN 'New Hampshire'
+						WHEN @state = 'NJ' THEN 'New Jersey'
+						WHEN @state = 'NM' THEN 'New Mexico'
+						WHEN @state = 'NY' THEN 'New York'
+						WHEN @state = 'NC' THEN 'North Carolina'
+						WHEN @state = 'ND' THEN 'North Dakota'
+						WHEN @state = 'OH' THEN 'Ohio'
+						WHEN @state = 'OK' THEN 'Oklahoma'
+						WHEN @state = 'OR' THEN 'Oregon'
+						WHEN @state = 'PA' THEN 'Pennsylvania'
+						WHEN @state = 'RI' THEN 'Rhode Island'
+						WHEN @state = 'SC' THEN 'South Carolina'
+						WHEN @state = 'SD' THEN 'South Dakota'
+						WHEN @state = 'TN' THEN 'Tennessee'
+						WHEN @state = 'TX' THEN 'Texas'
+						WHEN @state = 'UT' THEN 'Utah'
+						WHEN @state = 'VT' THEN 'Vermont'
+						WHEN @state = 'VA' THEN 'Virginia'
+						WHEN @state = 'WA' THEN 'Washington'
+						WHEN @state = 'WV' THEN 'West Virginia'
+						WHEN @state = 'WI' THEN 'Wisconsin'
+						WHEN @state = 'WY' THEN 'Wyoming'
+						ELSE 'NA'
+					END;
+
+				INSERT INTO salesByMonth VALUES (@autoNum, @salesYR, @salesMONum, @salesMO, @catName,
+					@deptName, @genderName, @city, @stateName, @sumSales);
+				
+				FETCH NEXT FROM getMonthlySales INTO
+					@salesMO, @salesMONum, @salesYR, @catName, @deptName, @gender,
+					@city, @state, @sumSales;
+			END
+
+		CLOSE getMonthlySales;
+
+		DEALLOCATE getMonthlySales;
+
+
+/* Load Sales by Week data*/
+	SET @autoNum = 0;
+
+	DECLARE getWeeklySales CURSOR
+	FOR SELECT DATEPART(wk, o.orderDT) as 'WeekDisplay', year(o.orderDt), ct.catName, d.deptName,
+				c.gender, s.city, s.state, sum(oi.qty*oi.price) as 'sales'
+	FROM customer c, orders o, orderItems oi, shippingAddress s, product p, department d, category ct
+	WHERE c.custID = o.custID and o.OID = oi.OID and c.custID = s.custID 
+		and p.prodID = oi.prodID and p.catID = ct.catID and ct.deptID = d.deptID and s.primaryYN=1
+	GROUP BY DATEPART(wk, o.orderDT), year(o.orderDt), ct.catName, d.deptName, c.gender, s.city, s.state;
+
+		OPEN getWeeklySales;
+
+		FETCH NEXT FROM getWeeklySales into
+			@salesWK, @salesYR, @catName, @deptName, @gender,
+			@city, @state, @sumSales;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+				SET @autoNum = @autoNum + 1;
+
+				IF @gender = 'M'
+					BEGIN SET @genderName = 'Male' End
+				ELSE IF @gender = 'F'
+					BEGIN SET @genderName = 'Female' End
+				ELSE
+					BEGIN SET @genderName = 'Other' End
+
+				SET @stateName =
+					CASE
+						WHEN @state = 'AL' THEN 'Alabama'
+						WHEN @state = 'AK' THEN 'Alaska'
+						WHEN @state = 'AZ' THEN 'Arizona'
+						WHEN @state = 'AR' THEN 'Arkansas'
+						WHEN @state = 'CA' THEN 'California'
+						WHEN @state = 'CO' THEN 'Colorado'
+						WHEN @state = 'CT' THEN 'Connecticut'
+						WHEN @state = 'DE' THEN 'Delaware'
+						WHEN @state = 'FL' THEN 'Florida'
+						WHEN @state = 'GA' THEN 'Georgia'
+						WHEN @state = 'HI' THEN 'Hawaii'
+						WHEN @state = 'ID' THEN 'Idaho'
+						WHEN @state = 'IL' THEN 'Illinois'
+						WHEN @state = 'IN' THEN 'Indiana'
+						WHEN @state = 'IA' THEN 'Iowa'
+						WHEN @state = 'KS' THEN 'Kansas'
+						WHEN @state = 'KY' THEN 'Kentucky'
+						WHEN @state = 'LA' THEN 'Louisiana'
+						WHEN @state = 'ME' THEN 'Maine'
+						WHEN @state = 'MD' THEN 'Maryland'
+						WHEN @state = 'MA' THEN 'Massachusetts'
+						WHEN @state = 'MI' THEN 'Michigan'
+						WHEN @state = 'MN' THEN 'Minnesota'
+						WHEN @state = 'MS' THEN 'Mississippi'
+						WHEN @state = 'MO' THEN 'Missouri'
+						WHEN @state = 'MT' THEN 'Montana'
+						WHEN @state = 'NE' THEN 'Nebraska'
+						WHEN @state = 'NV' THEN 'Nevada'
+						WHEN @state = 'NH' THEN 'New Hampshire'
+						WHEN @state = 'NJ' THEN 'New Jersey'
+						WHEN @state = 'NM' THEN 'New Mexico'
+						WHEN @state = 'NY' THEN 'New York'
+						WHEN @state = 'NC' THEN 'North Carolina'
+						WHEN @state = 'ND' THEN 'North Dakota'
+						WHEN @state = 'OH' THEN 'Ohio'
+						WHEN @state = 'OK' THEN 'Oklahoma'
+						WHEN @state = 'OR' THEN 'Oregon'
+						WHEN @state = 'PA' THEN 'Pennsylvania'
+						WHEN @state = 'RI' THEN 'Rhode Island'
+						WHEN @state = 'SC' THEN 'South Carolina'
+						WHEN @state = 'SD' THEN 'South Dakota'
+						WHEN @state = 'TN' THEN 'Tennessee'
+						WHEN @state = 'TX' THEN 'Texas'
+						WHEN @state = 'UT' THEN 'Utah'
+						WHEN @state = 'VT' THEN 'Vermont'
+						WHEN @state = 'VA' THEN 'Virginia'
+						WHEN @state = 'WA' THEN 'Washington'
+						WHEN @state = 'WV' THEN 'West Virginia'
+						WHEN @state = 'WI' THEN 'Wisconsin'
+						WHEN @state = 'WY' THEN 'Wyoming'
+						ELSE 'NA'
+					END;
+
+				INSERT INTO salesByWeek VALUES (@autoNum, @salesYR, @salesWK, @catName, @deptName,
+					@genderName, @city, @stateName, @sumSales);
+				
+				FETCH NEXT FROM getWeeklySales INTO
+					@salesWK, @salesYR, @catName, @deptName, @gender,
+					@city, @state, @sumSales;
+			END
+
+		CLOSE getWeeklySales;
+
+		DEALLOCATE getWeeklySales;
+RETURN 0

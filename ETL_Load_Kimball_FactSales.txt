@@ -1,0 +1,40 @@
+CREATE PROCEDURE [dbo].[ETL_Load_Kimball_FactSales]
+
+AS
+	DECLARE
+	@CID int,
+	@PID int,
+	@DID date,
+	@OID int,
+	@customerAge smallInt,
+	@productPrice numeric(6,2),
+	@quantity smallInt,
+	@extendedPrice numeric(10,2);
+
+	DECLARE getFactSales CURSOR
+	FOR SELECT c.CID, p.PID, o.orderDt, o.OID, 
+			FLOOR(DATEDIFF(dd,c.DOB,o.orderDt)/365) as age, oi.price, oi.qty, (oi.price*oi.qty)
+		FROM orders o, orderItems oi, dimCustomer c, dimProduct p
+		WHERE o.OID = oi.OID and c.customerID = o.custID and p.productID = oi.prodID;
+
+
+		OPEN getFactSales;
+
+		FETCH NEXT FROM getFactSales into
+			@CID, @PID, @DID, @OID, @customerAge, @productPrice, @quantity, @extendedPrice;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+
+				INSERT INTO factSales VALUES (@CID, @PID, @DID, @OID, @customerAge, @productPrice, @quantity, @extendedPrice);
+				
+				FETCH NEXT FROM getFactSales INTO
+					@CID, @PID, @DID, @OID, @customerAge, @productPrice, @quantity, @extendedPrice;
+			END
+
+		CLOSE getFactSales;
+
+		DEALLOCATE getFactSales;
+
+
+RETURN 0

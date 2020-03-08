@@ -1,0 +1,323 @@
+CREATE PROCEDURE [dbo].[ETL_Load_Kimball_Dimensions]
+
+AS
+	DECLARE
+	@prodName varchar(100),
+	@productID int,
+	@catName varchar(25),
+	@deptName varchar(25),
+	@autoNum int,
+	@customerID int,
+	@fullName varchar(40),
+	@lName varchar(20),
+	@phone varchar(12),
+	@areaCode varchar(3),
+	@email varchar(50),
+	@emailDomain varchar(50),
+	@DOB DATE,
+	@DOBMonth varchar(10),
+	@DOBYr SMALLINT,
+	@DOBYrMo varchar(15),
+	@gender varchar(15),
+	@sCity varchar(25),
+	@sStateName varchar(15),
+	@sState varchar(2),
+	@sZip varchar(5),
+	@pCity varchar(25),
+	@pStateName varchar(15),
+	@pState varchar(2),
+	@pZip varchar(5),
+	@ccType varchar(20),
+	@genderName varchar(15),
+	@getAtPosition smallINT,
+	@beginDate DATE = '2019-01-01',
+	@endDate DATE = '2019-12-31',
+	@year smallInt,
+	@quarter smallInt,
+	@qtrYr varchar(6),
+	@monthName varchar(10),
+	@monthDay varchar(13),
+	@monthYr varchar(15),
+	@weekNum smallInt,
+	@dayOfWeek smallInt,
+	@dayOfWeekName varchar(10),
+	@dayOfMonth smallInt,
+	@dayOfYear smallInt,
+	@weekday varchar(7),
+	@holiday varchar(40);
+
+	SET @autoNum = 0;
+
+	DECLARE getDimProduct CURSOR
+	FOR SELECT p.prodID, p.prodName, c.catName, d.deptName
+		FROM product p, category c, department d
+		WHERE p.catID = c.catID and c.deptID = d.deptID
+		ORDER BY d.deptName, c.catName, p.prodName;
+
+
+		OPEN getDimProduct;
+
+		FETCH NEXT FROM getDimProduct into
+			@productID, @prodName, @catName, @deptName;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+				SET @autoNum = @autoNum + 1;
+
+
+				INSERT INTO dimProduct VALUES (@autoNum, @productID, @prodName, @catName, @deptName);
+				
+				FETCH NEXT FROM getDimProduct INTO
+					@productID, @prodName, @catName, @deptName;
+			END
+
+		CLOSE getDimProduct;
+
+		DEALLOCATE getDimProduct;
+
+/* Load Customer Dimension data*/
+	SET @autoNum = 0;
+
+	DECLARE getDimCustomer CURSOR
+	FOR SELECT c.custID, (fName + ' ' + lName), lName, phone, left(phone, 3), email, DOB, FORMAT(DOB, 'MMMM'), 
+				year(DOB), gender, s.city, s.state, s.zip, p.city, p.state, p.zip, p.ccType
+		FROM customer c, shippingAddress s, paymentInfo p
+		WHERE c.custID = s.custID and c.custID = p.custID and s.primaryYN=1 and pName = 'Primary'
+
+		OPEN getDimCustomer;
+
+		FETCH NEXT FROM getDimCustomer into
+			@customerID, @fullName, @lName, @phone, @areaCode, @email, @DOB, @DOBMonth, @DOBYr, @gender,
+			@sCity, @sState, @sZip, @pCity, @pState, @pZip, @ccType;
+
+		WHILE @@FETCH_STATUS = 0
+			BEGIN
+				SET @autoNum = @autoNum + 1;
+
+				SET @getAtPosition = CHARINDEX('@', @email)+1;
+				SET @emailDomain = SUBSTRING(@email,@getAtPosition,LEN(@email)-@getAtPosition+1);
+				
+				SET @DOBYrMo = @DOBMonth + '-' + CAST(@DOBYr as varchar(4));
+
+				IF @gender = 'M'
+					BEGIN SET @genderName = 'Male' End
+				ELSE IF @gender = 'F'
+					BEGIN SET @genderName = 'Female' End
+				ELSE
+					BEGIN SET @genderName = 'Other' End
+
+				SET @sStateName =
+					CASE
+						WHEN @sState = 'AL' THEN 'Alabama'
+						WHEN @sState = 'AK' THEN 'Alaska'
+						WHEN @sState = 'AZ' THEN 'Arizona'
+						WHEN @sState = 'AR' THEN 'Arkansas'
+						WHEN @sState = 'CA' THEN 'California'
+						WHEN @sState = 'CO' THEN 'Colorado'
+						WHEN @sState = 'CT' THEN 'Connecticut'
+						WHEN @sState = 'DE' THEN 'Delaware'
+						WHEN @sState = 'FL' THEN 'Florida'
+						WHEN @sState = 'GA' THEN 'Georgia'
+						WHEN @sState = 'HI' THEN 'Hawaii'
+						WHEN @sState = 'ID' THEN 'Idaho'
+						WHEN @sState = 'IL' THEN 'Illinois'
+						WHEN @sState = 'IN' THEN 'Indiana'
+						WHEN @sState = 'IA' THEN 'Iowa'
+						WHEN @sState = 'KS' THEN 'Kansas'
+						WHEN @sState = 'KY' THEN 'Kentucky'
+						WHEN @sState = 'LA' THEN 'Louisiana'
+						WHEN @sState = 'ME' THEN 'Maine'
+						WHEN @sState = 'MD' THEN 'Maryland'
+						WHEN @sState = 'MA' THEN 'Massachusetts'
+						WHEN @sState = 'MI' THEN 'Michigan'
+						WHEN @sState = 'MN' THEN 'Minnesota'
+						WHEN @sState = 'MS' THEN 'Mississippi'
+						WHEN @sState = 'MO' THEN 'Missouri'
+						WHEN @sState = 'MT' THEN 'Montana'
+						WHEN @sState = 'NE' THEN 'Nebraska'
+						WHEN @sState = 'NV' THEN 'Nevada'
+						WHEN @sState = 'NH' THEN 'New Hampshire'
+						WHEN @sState = 'NJ' THEN 'New Jersey'
+						WHEN @sState = 'NM' THEN 'New Mexico'
+						WHEN @sState = 'NY' THEN 'New York'
+						WHEN @sState = 'NC' THEN 'North Carolina'
+						WHEN @sState = 'ND' THEN 'North Dakota'
+						WHEN @sState = 'OH' THEN 'Ohio'
+						WHEN @sState = 'OK' THEN 'Oklahoma'
+						WHEN @sState = 'OR' THEN 'Oregon'
+						WHEN @sState = 'PA' THEN 'Pennsylvania'
+						WHEN @sState = 'RI' THEN 'Rhode Island'
+						WHEN @sState = 'SC' THEN 'South Carolina'
+						WHEN @sState = 'SD' THEN 'South Dakota'
+						WHEN @sState = 'TN' THEN 'Tennessee'
+						WHEN @sState = 'TX' THEN 'Texas'
+						WHEN @sState = 'UT' THEN 'Utah'
+						WHEN @sState = 'VT' THEN 'Vermont'
+						WHEN @sState = 'VA' THEN 'Virginia'
+						WHEN @sState = 'WA' THEN 'Washington'
+						WHEN @sState = 'WV' THEN 'West Virginia'
+						WHEN @sState = 'WI' THEN 'Wisconsin'
+						WHEN @sState = 'WY' THEN 'Wyoming'
+						ELSE 'NA'
+					END;
+
+				SET @pStateName =
+					CASE
+						WHEN @pState = 'AL' THEN 'Alabama'
+						WHEN @pState = 'AK' THEN 'Alaska'
+						WHEN @pState = 'AZ' THEN 'Arizona'
+						WHEN @pState = 'AR' THEN 'Arkansas'
+						WHEN @pState = 'CA' THEN 'California'
+						WHEN @pState = 'CO' THEN 'Colorado'
+						WHEN @pState = 'CT' THEN 'Connecticut'
+						WHEN @pState = 'DE' THEN 'Delaware'
+						WHEN @pState = 'FL' THEN 'Florida'
+						WHEN @pState = 'GA' THEN 'Georgia'
+						WHEN @pState = 'HI' THEN 'Hawaii'
+						WHEN @pState = 'ID' THEN 'Idaho'
+						WHEN @pState = 'IL' THEN 'Illinois'
+						WHEN @pState = 'IN' THEN 'Indiana'
+						WHEN @pState = 'IA' THEN 'Iowa'
+						WHEN @pState = 'KS' THEN 'Kansas'
+						WHEN @pState = 'KY' THEN 'Kentucky'
+						WHEN @pState = 'LA' THEN 'Louisiana'
+						WHEN @pState = 'ME' THEN 'Maine'
+						WHEN @pState = 'MD' THEN 'Maryland'
+						WHEN @pState = 'MA' THEN 'Massachusetts'
+						WHEN @pState = 'MI' THEN 'Michigan'
+						WHEN @pState = 'MN' THEN 'Minnesota'
+						WHEN @pState = 'MS' THEN 'Mississippi'
+						WHEN @pState = 'MO' THEN 'Missouri'
+						WHEN @pState = 'MT' THEN 'Montana'
+						WHEN @pState = 'NE' THEN 'Nebraska'
+						WHEN @pState = 'NV' THEN 'Nevada'
+						WHEN @pState = 'NH' THEN 'New Hampshire'
+						WHEN @pState = 'NJ' THEN 'New Jersey'
+						WHEN @pState = 'NM' THEN 'New Mexico'
+						WHEN @pState = 'NY' THEN 'New York'
+						WHEN @pState = 'NC' THEN 'North Carolina'
+						WHEN @pState = 'ND' THEN 'North Dakota'
+						WHEN @pState = 'OH' THEN 'Ohio'
+						WHEN @pState = 'OK' THEN 'Oklahoma'
+						WHEN @pState = 'OR' THEN 'Oregon'
+						WHEN @pState = 'PA' THEN 'Pennsylvania'
+						WHEN @pState = 'RI' THEN 'Rhode Island'
+						WHEN @pState = 'SC' THEN 'South Carolina'
+						WHEN @pState = 'SD' THEN 'South Dakota'
+						WHEN @pState = 'TN' THEN 'Tennessee'
+						WHEN @pState = 'TX' THEN 'Texas'
+						WHEN @pState = 'UT' THEN 'Utah'
+						WHEN @pState = 'VT' THEN 'Vermont'
+						WHEN @pState = 'VA' THEN 'Virginia'
+						WHEN @pState = 'WA' THEN 'Washington'
+						WHEN @pState = 'WV' THEN 'West Virginia'
+						WHEN @pState = 'WI' THEN 'Wisconsin'
+						WHEN @pState = 'WY' THEN 'Wyoming'
+						ELSE 'NA'
+					END;
+
+				INSERT INTO dimCustomer VALUES (@autoNum, @customerID, @fullName, @lName, @phone, @areaCode, @email, @emailDomain,
+					@DOB, @DOBYr, @DOBYrMo, @genderName, @sCity, @sStateName, @sZip, @pCity, @pStateName, @pZip, @ccType);
+				
+				FETCH NEXT FROM getDimCustomer INTO
+					@customerID, @fullName, @lName, @phone, @areaCode, @email, @DOB, @DOBMonth, @DOBYr, @gender,
+					@sCity, @sState, @sZip, @pCity, @pState, @pZip, @ccType;
+			END
+
+		CLOSE getDimCustomer;
+
+		DEALLOCATE getDimCustomer;
+
+
+/* Load Date Dimension data*/
+	WHILE (@beginDate <= @endDate)
+
+	BEGIN
+		SET @year = year(@beginDate);
+		SET @quarter = DATEPART(QUARTER, @beginDate);
+		SET @qtrYr = CAST(@quarter as varchar(1)) + '-' + CAST(@year as varchar(4));
+		SET @monthName = FORMAT(@beginDate, 'MMMM');
+		SET @monthDay = @monthName + '-' + CAST(DAY(@beginDate) as varchar(2));
+		SET @monthYr = @monthName + '-' + CAST(@year as varchar(4));
+		SET @weekNum = DATEPART(week, @beginDate);
+		SET @dayOfWeek = DATEPART(weekday, @beginDate);
+		SET @dayOfMonth = DAY(@beginDate);
+		SET @dayOfYear = DATEPART(dayofyear, @beginDate);
+
+		SET @dayOfWeekName =
+			CASE
+				WHEN @dayOfWeek = 1 THEN 'Sunday'
+				WHEN @dayOfWeek = 2 THEN 'Monday'
+				WHEN @dayOfWeek = 3 THEN 'Tuesday'
+				WHEN @dayOfWeek = 4 THEN 'Wednesday'
+				WHEN @dayOfWeek = 5 THEN 'Thursday'
+				WHEN @dayOfWeek = 6 THEN 'Friday'
+				WHEN @dayOfWeek = 7 THEN 'Saturday'
+			ELSE 'NA'
+		END;
+
+		IF @dayOfWeek = 1
+			BEGIN SET @weekday = 'Weekend' End
+		ELSE IF @dayOfWeek = 7
+			BEGIN SET @weekday = 'Weekend' End
+		ELSE
+			BEGIN SET @weekday = 'Weekday' End
+
+		SET @holiday =
+			CASE
+				WHEN @beginDate = '2019-01-01' THEN 'New Year''s Day'
+				WHEN @beginDate = '2019-01-21' THEN 'Martin Luther King Day'
+				WHEN @beginDate = '2019-01-24' THEN 'Belly Laugh Day'
+				WHEN @beginDate = '2019-02-02' THEN 'Groundhog Day'
+				WHEN @beginDate = '2019-02-12' THEN 'Lincoln''s Birthday'
+				WHEN @beginDate = '2019-02-14' THEN 'Valentine''s Day'
+				WHEN @beginDate = '2019-02-18' THEN 'Presidents Day'
+				WHEN @beginDate = '2019-03-05' THEN 'Mardi Gras Carnival'
+				WHEN @beginDate = '2019-03-10' THEN 'Daylight Saving'
+				WHEN @beginDate = '2019-03-17' THEN 'St. Patrick''s Day'
+				WHEN @beginDate = '2019-04-01' THEN 'April Fool''s Day'
+				WHEN @beginDate = '2019-04-19' THEN 'Good Friday'
+				WHEN @beginDate = '2019-04-21' THEN 'Easter'
+				WHEN @beginDate = '2019-04-22' THEN 'Earth Day'
+				WHEN @beginDate = '2019-05-05' THEN 'Cinco de Mayo'
+				WHEN @beginDate = '2019-05-12' THEN 'Mother''s Day'
+				WHEN @beginDate = '2019-05-18' THEN 'Armed Forces Day'
+				WHEN @beginDate = '2019-05-27' THEN 'Memorial Day'
+				WHEN @beginDate = '2019-06-09' THEN 'Pentecost'
+				WHEN @beginDate = '2019-06-14' THEN 'Flag Day'
+				WHEN @beginDate = '2019-06-16' THEN 'Father''s Day'
+				WHEN @beginDate = '2019-07-04' THEN 'Independence Day'
+				WHEN @beginDate = '2019-07-28' THEN 'Parents Day'
+				WHEN @beginDate = '2019-09-02' THEN 'Labor Day'
+				WHEN @beginDate = '2019-09-08' THEN 'Grandparents Day'
+				WHEN @beginDate = '2019-09-11' THEN 'Patriot Day'
+				WHEN @beginDate = '2019-09-16' THEN 'Stepfamily Day'
+				WHEN @beginDate = '2019-09-17' THEN 'Citizenship Day'
+				WHEN @beginDate = '2019-09-27' THEN 'Native American Day'
+				WHEN @beginDate = '2019-10-14' THEN 'Columbus Day'
+				WHEN @beginDate = '2019-10-16' THEN 'Boss''s Day'
+				WHEN @beginDate = '2019-10-19' THEN 'Sweetest Day'
+				WHEN @beginDate = '2019-10-31' THEN 'Halloween'
+				WHEN @beginDate = '2019-11-03' THEN 'Daylight Saving'
+				WHEN @beginDate = '2019-11-11' THEN 'Veterans Day'
+				WHEN @beginDate = '2019-11-28' THEN 'Thanksgiving'
+				WHEN @beginDate = '2019-11-29' THEN 'Black Friday'
+				WHEN @beginDate = '2019-12-02' THEN 'Cyber Monday'
+				WHEN @beginDate = '2019-12-07' THEN 'Pearl Harbor Remembrance Day'
+				WHEN @beginDate = '2019-12-24' THEN 'Christmas Eve'
+				WHEN @beginDate = '2019-12-25' THEN 'Christmas Day'
+				WHEN @beginDate = '2019-12-31' THEN 'New Year''s Eve'
+			ELSE 'NA'
+		END;
+
+		INSERT INTO dimDate VALUES(@beginDate, @year, @quarter, @qtrYr, @monthName, @monthDay, @monthYr,
+								@weekNum, @dayOfWeekName, @dayOfMonth, @dayOfYear, @weekday, @holiday);
+		
+
+		SET @beginDate = DATEADD(day, 1, @beginDate);
+
+	END
+	
+
+
+RETURN 0

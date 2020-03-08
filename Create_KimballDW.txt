@@ -1,0 +1,73 @@
+CREATE PROCEDURE [dbo].[create_KimballDW]
+
+AS
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='dimProduct')
+CREATE TABLE [dbo].[dimProduct] (
+    [PID]            INT           NOT NULL,
+    [productID]      INT           NOT NULL,
+    [productName]    VARCHAR(100)  NOT NULL,
+    [categoryName]   VARCHAR(25)   NOT NULL, 
+    [departmentName] VARCHAR(25)   NOT NULL, 
+    CONSTRAINT [PK_PID] PRIMARY KEY CLUSTERED ([PID] ASC)
+);
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='dimCustomer')
+CREATE TABLE [dbo].[dimCustomer] (
+    [CID]          INT           NOT NULL,
+    [customerID]   INT           NOT NULL,
+    [fullName]     VARCHAR(40)   NOT NULL,
+    [familyName]   VARCHAR(20)   NOT NULL,
+    [phone]        VARCHAR(12)   NOT NULL,
+    [areaCode]     VARCHAR(3)    NOT NULL, 
+    [email]        VARCHAR(50)   NOT NULL, 
+    [emailDomain]  VARCHAR(50)   NOT NULL,
+    [DOB]          DATE          NOT NULL, 
+    [DOBYear]      SMALLINT      NOT NULL,
+    [DOBMonthYear] VARCHAR(20)   NOT NULL,
+    [gender]       VARCHAR(15)   NOT NULL,
+    [shipCity]     VARCHAR(25)   NOT NULL,
+    [shipState]    VARCHAR(15)   NOT NULL,
+    [shipZipCode]  VARCHAR(5)    NOT NULL,
+    [billCity]     VARCHAR(25)   NOT NULL,
+    [billState]    VARCHAR(15)   NOT NULL,
+    [billZipCode]  VARCHAR(5)    NOT NULL,
+    [billCCType]   VARCHAR(20)    NOT NULL,
+    CONSTRAINT [PK_CID] PRIMARY KEY CLUSTERED ([CID] ASC),
+);
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='dimDate')
+CREATE TABLE [dbo].[dimDate] (
+    [fullDate]     DATE        NOT NULL,
+    [year]         SMALLINT    NOT NULL,
+    [quarter]      SMALLINT    NOT NULL,
+    [quarter-year] VARCHAR(6)  NOT NULL,
+    [month]        VARCHAR(10) NOT NULL,
+    [month-day]    VARCHAR(13) NOT NULL,
+    [month-year]   VARCHAR(15) NOT NULL,
+    [weekNumber]   SMALLINT    NOT NULL,
+    [dayOfWeek]    VARCHAR(10) NOT NULL,
+    [dayOfMonth]   SMALLINT    NOT NULL,
+    [dayOfYear]    SMALLINT    NOT NULL,
+    [weekday]      VARCHAR(7)  NOT NULL,
+    [holiday]      VARCHAR(40) NOT NULL,
+    CONSTRAINT [PK_fullDate] PRIMARY KEY CLUSTERED ([fullDate] ASC),
+);
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='factSales')
+CREATE TABLE [dbo].[factSales] (
+    [CID]           INT           NOT NULL,
+    [PID]           INT           NOT NULL,
+    [fullDate]      DATE          NOT NULL,
+    [OID]           INT           NOT NULL,
+    [customerAge]   SMALLINT      NOT NULL,
+    [productPrice]  NUMERIC(6,2)  NOT NULL,
+    [quantity]      SMALLINT      NOT NULL,
+    [extendedPrice] NUMERIC(10,2) NOT NULL,
+    CONSTRAINT [PK_saleskey] PRIMARY KEY CLUSTERED ([CID],[PID],[fullDate] ASC),
+    CONSTRAINT [FK_salesCID] FOREIGN KEY (CID) REFERENCES dimCustomer(CID),
+    CONSTRAINT [FK_salesPID] FOREIGN KEY (PID) REFERENCES dimProduct(PID),
+    CONSTRAINT [FK_salesDID] FOREIGN KEY (fullDate) REFERENCES dimDate(fullDate)
+);
+
+RETURN 0

@@ -1,0 +1,47 @@
+CREATE PROCEDURE [dbo].[create_InmonDW]
+
+AS
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='salesByYear')
+CREATE TABLE [dbo].[salesByYear] (
+    [SYID]     INT           NOT NULL,
+    [salesYR]  INT           NOT NULL,
+    [catName]  VARCHAR(25)   NOT NULL, 
+    [deptName] VARCHAR(25)   NOT NULL, 
+    [gender]   VARCHAR(15)   NOT NULL,
+    [city]     VARCHAR(25)   NOT NULL, 
+    [state]    VARCHAR(15)   NOT NULL,
+    [sumSales] DECIMAL(10,2) NOT NULL,
+    CONSTRAINT [PK_YR] PRIMARY KEY CLUSTERED ([SYID] ASC)
+);
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='salesByMonth')
+CREATE TABLE [dbo].[salesByMonth] (
+    [SMID]        INT           NOT NULL,
+    [salesYR]     INT           NOT NULL,
+    [salesMONum]  INT           NOT NULL,
+    [salesMO]     VARCHAR(10)   NOT NULL,
+    [catName]     VARCHAR(25)   NOT NULL, 
+    [deptName]    VARCHAR(25)   NOT NULL, 
+    [gender]      VARCHAR(15)   NOT NULL,
+    [city]        VARCHAR(25)   NOT NULL, 
+    [state]       VARCHAR(15)   NOT NULL,
+    [sumSales]    DECIMAL(10,2) NOT NULL,
+    CONSTRAINT [PK_MO] PRIMARY KEY CLUSTERED ([SMID] ASC),
+);
+
+IF NOT EXISTS (SELECT * FROM sys.Tables WHERE name='salesByWeek')
+CREATE TABLE [dbo].[salesByWeek] (
+    [SWID]     INT           NOT NULL,
+    [salesYR]  INT           NOT NULL,
+    [salesWK]  SmallInt      NOT NULL,
+    [catName]  VARCHAR(25)   NOT NULL, 
+    [deptName] VARCHAR(25)   NOT NULL, 
+    [gender]   VARCHAR(15)   NOT NULL,
+    [city]     VARCHAR(25)   NOT NULL, 
+    [state]    VARCHAR(15)   NOT NULL,
+    [sumSales] DECIMAL(10,2) NOT NULL,
+    CONSTRAINT [PK_WK] PRIMARY KEY CLUSTERED ([SWID] ASC),
+);
+
+RETURN 0

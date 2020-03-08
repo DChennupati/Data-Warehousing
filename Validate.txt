@@ -1,0 +1,37 @@
+select count(*) from customer;
+
+select count(*) from shippingAddress;
+
+select count(*) from paymentInfo;
+
+select count(*) from department;
+
+select count(*) from category;
+
+select count(*) from product;
+
+select count(*) from shippingMethods;
+
+select count(*) from orders;
+
+select count(*) from orderItems;
+
+Results:
+--------
+808
+
+808
+
+808
+
+3
+
+14
+
+459
+
+14
+
+0
+
+0

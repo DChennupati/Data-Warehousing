@@ -1,0 +1,15 @@
+Readme
+
+For creating a database run the files in the below-mentioned order:
+1) Run Create_DB -  This stored procedure  creates tables along with the data types
+2) Insert_DB_Data - It inserts the data into the respective tables.
+3) Delete_DB - Create this stored procedure but do not run it as it deletes the whole database you just created.
+4) Refresh_DB - This Stored Procedure refresh's the database.
+5) Validate - Use this script to validate the tables created.
+
+------- Creating a Data Warehouse-----------------
+1) Run Create_InmonDW - Run this stored procedure as it creates a 3NF Normalised form tables for building a data warehouse .
+2) Run_Create_KimballDW - This stored procedure Tables created using Kimball method Which is Star-schema.
+3) ETL_Load_Inmon_Data - We first extract, transform and load the data in the Inmon tables.
+4) ETL_Load_Kimball_Dimensions - We then load Kimball's dimensions tables first even before loading the Fact tables since Dimension table contains primary keys/ surrogate keys which are in turn the foreign keys in the fact tables, hence we load the parent tables first.
+5) ETL_Load_Kimball_FactSales - We extract, transform and finally load the data in our FactSales table.
